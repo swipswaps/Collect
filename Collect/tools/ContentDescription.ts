@@ -60,9 +60,22 @@ export class ContentDescription {
         });
     }
 
+    // canWriteFileLock states whether the file can be written to
+    private static canWriteFileLock: boolean = true;
+
     // Saves the specified data in the content file
     private static saveFile(data: Array<ContentDescription>, callback: (err: Error) => void): void {
-        fs.writeFile(ContentDescription.CONTENT_FILE, JSON.stringify(data), "utf-8", callback);
+        if (ContentDescription.canWriteFileLock) {
+            this.canWriteFileLock = false;
+
+            fs.writeFile(ContentDescription.CONTENT_FILE, JSON.stringify(data), "utf-8", function (err: Error) {
+                ContentDescription.canWriteFileLock = true;
+                callback(err);
+            });
+        } else {
+            // prevent concurrent writes by trying again in 2 ms
+            setTimeout(this.saveFile, 2, data, callback);
+        }
     }
 
     // Returns all saved sites

@@ -41,7 +41,17 @@ class ContentDescription {
     }
     // Saves the specified data in the content file
     static saveFile(data, callback) {
-        fs.writeFile(ContentDescription.CONTENT_FILE, JSON.stringify(data), "utf-8", callback);
+        if (ContentDescription.canWriteFileLock) {
+            this.canWriteFileLock = false;
+            fs.writeFile(ContentDescription.CONTENT_FILE, JSON.stringify(data), "utf-8", function (err) {
+                ContentDescription.canWriteFileLock = true;
+                callback(err);
+            });
+        }
+        else {
+            // prevent concurrent writes by trying again in 2 ms
+            setTimeout(this.saveFile, 2, data, callback);
+        }
     }
     // Returns all saved sites
     static getSaved(callback) {
@@ -163,6 +173,8 @@ class ContentDescription {
 }
 // This is where all information is saved
 ContentDescription.CONTENT_FILE = mpath.join("public", "s", "content.json");
+// canWriteFileLock states whether the file can be written to
+ContentDescription.canWriteFileLock = true;
 ContentDescription.URL_PREFIXES = ["video:"];
 exports.ContentDescription = ContentDescription;
 //# sourceMappingURL=ContentDescription.js.map
